@@ -272,8 +272,14 @@
     let pendingHeaderReveal = null;
 
     function hideSplashScreen() {
-      setTimeout(() => {
-        resolveInitialPage();
+      setTimeout(async () => {
+        // Tunggu keputusan resolveInitialPage() selesai (bisa perlu waktu
+        // karena ada pemanggilan TinyDB & verifikasi login ke server).
+        // Kalau ujungnya redirect ke dashboard.html, splash dibiarkan
+        // tetap menutupi layar sampai halaman benar-benar berpindah --
+        // form login tidak pernah sempat ditampilkan sama sekali.
+        const willNavigateAway = await resolveInitialPage();
+        if (willNavigateAway) return;
 
         const splash = document.getElementById('splashScreen');
         splash.classList.add('fade-out');
@@ -377,6 +383,9 @@
     // ada sesi tersimpan (TinyDB atau sessionStorage), langsung lanjut ke
     // dashboard.html tanpa menampilkan form login.
     async function resolveInitialPage() {
+      // Return true jika fungsi ini akan membawa guru pindah dari halaman
+      // ini (redirect ke dashboard.html, atau proses login via URL
+      // params), false jika form login memang harus ditampilkan.
       // Cek login tersimpan di TinyDB
       try {
         const savedSession = await kStorage.getJSON(userSessionTag(), null);
@@ -387,7 +396,7 @@
             user = loginRes;
             sessionStorage.setItem('user', JSON.stringify(user));
             window.location.href = 'dashboard.html';
-            return;
+            return true;
           }
           if (loginRes.offline) {
             // Gagal karena tidak ada koneksi (bukan kredensial salah) ->
@@ -395,7 +404,7 @@
             user = { username: savedSession.username, nama: savedSession.nama || savedSession.username, role: savedSession.role };
             sessionStorage.setItem('user', JSON.stringify(user));
             window.location.href = 'dashboard.html';
-            return;
+            return true;
           }
           // Jika sampai sini: server terjangkau tapi kredensial ditolak ->
           // lanjut ke fallback di bawah (biasanya akan berakhir di form login).
@@ -410,16 +419,22 @@
       const p = params.get('password');
 
       if (u && p) {
-        doLogin(u, p);
-      } else {
-        const savedUser = sessionStorage.getItem('user');
-        if (savedUser) {
-          user = JSON.parse(savedUser);
-          window.location.href = 'dashboard.html';
-        }
-        // Jika tidak ada sesi sama sekali, form login (sudah tampil sejak
-        // awal di body) tetap ditampilkan apa adanya.
+        // doLogin() sendiri yang akan redirect saat berhasil, atau
+        // menampilkan pesan error di form saat gagal -- form login perlu
+        // ditampilkan setelah ini selesai baik berhasil maupun gagal.
+        await doLogin(u, p);
+        return false;
       }
+
+      const savedUser = sessionStorage.getItem('user');
+      if (savedUser) {
+        user = JSON.parse(savedUser);
+        window.location.href = 'dashboard.html';
+        return true;
+      }
+
+      // Tidak ada sesi sama sekali -> form login memang harus ditampilkan.
+      return false;
     }
 
     document.addEventListener('DOMContentLoaded', () => {
