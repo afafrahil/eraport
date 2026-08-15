@@ -63,81 +63,75 @@
     }
 
     /* ============================
-       DAFTAR SISWA
+       TAB ASPEK
        ============================ */
-    .siswa-list {
+    .aspek-tabs {
       display: flex;
-      flex-direction: column;
-      gap: 10px;
-      overflow-y: auto;
-      flex: 1;
-      min-height: 0;
-      padding-bottom: 12px;
-    }
-
-    .siswa-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 12px 14px;
-      cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .siswa-card:active {
-      background: #f8fafc;
-    }
-
-    .siswa-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .siswa-nama {
-      font-weight: 600;
-      font-size: 14px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .siswa-nis {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 1px;
-    }
-
-    .siswa-attendance {
-      font-size: 10px;
-      color: var(--text-muted);
-      margin-top: 4px;
-      white-space: nowrap;
-    }
-
-    .score-badge {
+      gap: 6px;
+      overflow-x: auto;
+      margin-bottom: 12px;
       flex-shrink: 0;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 14px;
+      padding-bottom: 2px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .aspek-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .aspek-tab-btn {
+      flex-shrink: 0;
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      background: var(--card-bg);
+      color: var(--text-muted);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: 0.15s;
+    }
+
+    .aspek-tab-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
       color: #fff;
     }
 
-    .score-badge.good { background: var(--success); }
-    .score-badge.mid { background: var(--offline-color); }
-    .score-badge.low { background: var(--error); }
-    .score-badge.none { background: #cbd5e0; color: var(--text-muted); font-size: 10px; }
+    /* ============================
+       TABEL SISWA x MAPEL
+       ============================ */
+    .siswa-col {
+      min-width: 140px;
+      text-align: left !important;
+    }
 
-    .siswa-arrow {
-      color: var(--text-muted);
-      flex-shrink: 0;
+    th.mapel-col {
+      min-width: 84px;
+      max-width: 110px;
+      white-space: normal;
+      line-height: 1.25;
+      font-size: 11px;
+    }
+
+    tbody tr {
+      cursor: pointer;
+    }
+
+    tbody tr:active {
+      background: #f8fafc;
+    }
+
+    .kehadiran-cell {
+      font-weight: 600;
+      font-size: 10.5px;
+      line-height: 1.5;
+      white-space: nowrap;
+    }
+
+    .kehadiran-cell span {
+      display: block;
     }
 
     .empty-state {
@@ -231,11 +225,23 @@
       </div>
 
       <div class="search-wrap">
-        <input type="text" id="searchSiswa" placeholder="Cari nama atau NIS siswa..." oninput="renderSiswaList()">
+        <input type="text" id="searchSiswa" placeholder="Cari nama atau NIS siswa..." oninput="renderTabelWaliKelas()">
       </div>
 
-      <div class="siswa-list" id="siswaList">
-        <div class="empty-state">Memuat data...</div>
+      <!-- TAB ASPEK -->
+      <div class="aspek-tabs" id="aspekTabs"></div>
+
+      <div class="table-responsive">
+        <table id="tableWaliKelas">
+          <thead>
+            <tr id="theadWaliKelasRow">
+              <th class="sticky-col siswa-col">Nama Siswa</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyWaliKelas">
+            <tr><td class="empty-state">Memuat data...</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -278,6 +284,22 @@
     // ==========================================
     let currentKelas = null;
     let waliKelasData = null; // { siswa, mapelList, rekap }
+    let currentAspekWali = 'PENGETAHUAN';
+
+    // Label singkat & nama field nilai per aspek (KEHADIRAN ditangani khusus)
+    const ASPEK_LABEL_WALI = {
+      PENGETAHUAN: 'Pengetahuan',
+      KETERAMPILAN: 'Keterampilan',
+      SPIRITUAL: 'Spiritual',
+      SOSIAL: 'Sosial',
+      KEHADIRAN: 'Kehadiran'
+    };
+    const ASPEK_FIELD_WALI = {
+      PENGETAHUAN: 'pengetahuan',
+      KETERAMPILAN: 'keterampilan',
+      SPIRITUAL: 'spiritual',
+      SOSIAL: 'sosial'
+    };
 
     document.addEventListener('DOMContentLoaded', async () => {
       const ok = await ensureLoggedIn();
@@ -291,9 +313,29 @@
 
       document.getElementById('waliKelasTitle').textContent = `Wali Kelas ${currentKelas}`;
 
+      renderAspekTabsWali();
       loadAppHeaderFromCache();
       loadRekapWaliKelas();
     });
+
+    // ==========================================
+    // TAB ASPEK
+    // ==========================================
+    function renderAspekTabsWali() {
+      const wrap = document.getElementById('aspekTabs');
+      wrap.innerHTML = '';
+      ASPEK_LIST.forEach(aspek => {
+        const btn = document.createElement('button');
+        btn.className = 'aspek-tab-btn' + (aspek === currentAspekWali ? ' active' : '');
+        btn.textContent = ASPEK_LABEL_WALI[aspek] || aspek;
+        btn.onclick = () => {
+          currentAspekWali = aspek;
+          renderAspekTabsWali();
+          renderTabelWaliKelas();
+        };
+        wrap.appendChild(btn);
+      });
+    }
 
     // ==========================================
     // AMBIL REKAP (WAJIB ONLINE — halaman ini tidak punya mode offline,
@@ -316,8 +358,9 @@
           'Halaman Wali Kelas membutuhkan koneksi internet. Pastikan perangkat terhubung, lalu tekan "Refresh".' :
           (res.message || 'Gagal memuat data.');
         if (statusEl) statusEl.textContent = 'Tidak terhubung ke server';
-        document.getElementById('siswaList').innerHTML =
-          `<div class="empty-state" style="color:var(--error);">${pesan}</div>`;
+        document.getElementById('theadWaliKelasRow').innerHTML = '<th class="sticky-col siswa-col">Nama Siswa</th>';
+        document.getElementById('tbodyWaliKelas').innerHTML =
+          `<tr><td class="empty-state" style="color:var(--error);">${pesan}</td></tr>`;
         waliKelasData = null;
         document.getElementById('sumSiswa').textContent = '-';
         document.getElementById('sumMapel').textContent = '-';
@@ -332,33 +375,12 @@
       document.getElementById('sumMapel').textContent = res.mapelList.length;
       document.getElementById('sumRerata').textContent = hitungRerataKelas_(res);
 
-      renderSiswaList();
+      renderTabelWaliKelas();
     }
 
     // ==========================================
     // HITUNG BANTUAN
     // ==========================================
-    function rataPengetahuanSiswa_(nis) {
-      const rekapSiswa = (waliKelasData.rekap && waliKelasData.rekap[nis]) || {};
-      const nilaiList = Object.values(rekapSiswa)
-        .map(m => Number(m.pengetahuan))
-        .filter(v => !isNaN(v) && v > 0);
-      if (!nilaiList.length) return null;
-      return Math.round(nilaiList.reduce((a, b) => a + b, 0) / nilaiList.length);
-    }
-
-    function totalKehadiranSiswa_(nis) {
-      const rekapSiswa = (waliKelasData.rekap && waliKelasData.rekap[nis]) || {};
-      const total = { hadir: 0, sakit: 0, izin: 0, alfa: 0 };
-      Object.values(rekapSiswa).forEach(m => {
-        total.hadir += Number(m.hadir) || 0;
-        total.sakit += Number(m.sakit) || 0;
-        total.izin += Number(m.izin) || 0;
-        total.alfa += Number(m.alfa) || 0;
-      });
-      return total;
-    }
-
     function hitungRerataKelas_(res) {
       const semua = [];
       res.siswa.forEach(s => {
@@ -372,19 +394,23 @@
       return Math.round(semua.reduce((a, b) => a + b, 0) / semua.length);
     }
 
-    function scoreBadgeClass_(score) {
-      if (score === null) return 'none';
-      if (score >= 80) return 'good';
-      if (score >= 70) return 'mid';
-      return 'low';
-    }
-
     // ==========================================
-    // RENDER DAFTAR SISWA
+    // RENDER TABEL: Nama Siswa (baris) x Mata Pelajaran (kolom)
+    // Isi sel mengikuti aspek yang sedang dipilih pada tab.
     // ==========================================
-    function renderSiswaList() {
-      const listEl = document.getElementById('siswaList');
+    function renderTabelWaliKelas() {
+      const thead = document.getElementById('theadWaliKelasRow');
+      const tbody = document.getElementById('tbodyWaliKelas');
       if (!waliKelasData) return;
+
+      const mapelList = waliKelasData.mapelList || [];
+
+      // Header: kolom nama siswa + satu kolom per mata pelajaran
+      let headHTML = '<th class="sticky-col siswa-col">Nama Siswa</th>';
+      mapelList.forEach(m => {
+        headHTML += `<th class="mapel-col" title="${m.mapel}${m.guru ? ' — ' + m.guru : ''}">${m.mapel}</th>`;
+      });
+      thead.innerHTML = headHTML;
 
       const keyword = (document.getElementById('searchSiswa').value || '').trim().toLowerCase();
       const siswaFiltered = waliKelasData.siswa.filter(s =>
@@ -392,34 +418,54 @@
       );
 
       if (!siswaFiltered.length) {
-        listEl.innerHTML = `<div class="empty-state">Tidak ada siswa yang cocok.</div>`;
+        tbody.innerHTML = `<tr><td class="empty-state" colspan="${mapelList.length + 1}">Tidak ada siswa yang cocok.</td></tr>`;
         return;
       }
 
-      listEl.innerHTML = '';
-      siswaFiltered.forEach(s => {
-        const avg = rataPengetahuanSiswa_(s.nis);
-        const kehadiran = totalKehadiranSiswa_(s.nis);
-        const badgeClass = scoreBadgeClass_(avg);
+      if (!mapelList.length) {
+        tbody.innerHTML = `<tr><td class="empty-state" colspan="1">Belum ada mata pelajaran tercatat.</td></tr>`;
+        return;
+      }
 
-        const card = document.createElement('div');
-        card.className = 'siswa-card';
-        card.innerHTML = `
-          <div class="score-badge ${badgeClass}">${avg !== null ? avg : '-'}</div>
-          <div class="siswa-info">
-            <div class="siswa-nama">${s.nama}</div>
-            <div class="siswa-nis">${s.nis}</div>
-            <div class="siswa-attendance">H:${kehadiran.hadir} · S:${kehadiran.sakit} · I:${kehadiran.izin} · A:${kehadiran.alfa}</div>
-          </div>
-          <div class="siswa-arrow">&rarr;</div>
-        `;
-        card.onclick = () => openDetailSiswa(s);
-        listEl.appendChild(card);
+      tbody.innerHTML = '';
+      siswaFiltered.forEach(s => {
+        const rekapSiswa = (waliKelasData.rekap && waliKelasData.rekap[s.nis]) || {};
+
+        const tr = document.createElement('tr');
+        let rowHTML = `<td class="sticky-col siswa-col">${s.nama}</td>`;
+
+        mapelList.forEach(m => {
+          const n = rekapSiswa[m.mapel];
+          rowHTML += renderSelAspekWali_(n);
+        });
+
+        tr.innerHTML = rowHTML;
+        tr.onclick = () => openDetailSiswa(s);
+        tbody.appendChild(tr);
       });
     }
 
+    // Membangun satu sel <td> sesuai aspek (tab) yang sedang aktif.
+    function renderSelAspekWali_(n) {
+      if (currentAspekWali === 'KEHADIRAN') {
+        const h = n ? (Number(n.hadir) || 0) : 0;
+        const sk = n ? (Number(n.sakit) || 0) : 0;
+        const iz = n ? (Number(n.izin) || 0) : 0;
+        const al = n ? (Number(n.alfa) || 0) : 0;
+        if (!n || (!h && !sk && !iz && !al)) {
+          return `<td class="value-cell empty">-</td>`;
+        }
+        return `<td class="kehadiran-cell"><span>H:${h} S:${sk}</span><span>I:${iz} A:${al}</span></td>`;
+      }
+
+      const field = ASPEK_FIELD_WALI[currentAspekWali];
+      const v = n ? n[field] : null;
+      const hasVal = v !== undefined && v !== null && v !== '' && v !== 0;
+      return `<td class="value-cell ${hasVal ? '' : 'empty'}">${hasVal ? v : '-'}</td>`;
+    }
+
     // ==========================================
-    // MODAL DETAIL PER SISWA (semua mapel)
+    // MODAL DETAIL PER SISWA (semua mapel & aspek — dibuka dgn tap baris)
     // ==========================================
     function openDetailSiswa(s) {
       const body = document.getElementById('modalDetailBody');
