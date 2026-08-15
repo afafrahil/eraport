@@ -30,6 +30,18 @@
       pointer-events: none;
     }
 
+    /* Konten di balik splash (header + form login) disembunyikan dulu
+       supaya tidak tembus terlihat lewat splash yang transparan, lalu
+       dimunculkan setelah splash benar-benar hilang dari DOM. */
+    .app-body {
+      opacity: 0;
+    }
+
+    .app-body.ready {
+      opacity: 1;
+      transition: opacity 0.3s ease;
+    }
+
     .splash-shape {
       display: none;
     }
@@ -261,12 +273,15 @@
 
     function hideSplashScreen() {
       setTimeout(() => {
-        if (pendingHeaderReveal) pendingHeaderReveal();
         resolveInitialPage();
 
         const splash = document.getElementById('splashScreen');
         splash.classList.add('fade-out');
-        setTimeout(() => splash.remove(), 550);
+        setTimeout(() => {
+          splash.remove();
+          if (pendingHeaderReveal) pendingHeaderReveal();
+          document.querySelector('.app-body').classList.add('ready');
+        }, 550);
       }, SPLASH_HOLD_AFTER_DATA);
     }
 
