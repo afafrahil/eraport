@@ -180,6 +180,19 @@ function userSessionTag() {
   return 'USER_SESSION';
 }
 
+// ==========================================
+// TAG & STATE: WALI KELAS
+// ==========================================
+function waliKelasInfoTag() {
+  return 'WALIKELAS_INFO';
+}
+function setCurrentWaliKelas(kelas) {
+  sessionStorage.setItem('currentWaliKelas', kelas);
+}
+function getCurrentWaliKelas() {
+  return sessionStorage.getItem('currentWaliKelas') || null;
+}
+
 function infoLembagaTag() {
   return 'INFO_LEMBAGA';
 }
