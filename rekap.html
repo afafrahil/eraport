@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Rekap Nilai - Aplikasi Penilaian</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    /* ============================
+       MENU ASPEK & REKAP (khusus rekap.html)
+       ============================ */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-shrink: 0;
+    }
+
+    .menu-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .menu-btn.kehadiran {
+      grid-column: span 2;
+      background: #2b6cb0;
+    }
+
+    .section-label {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER CARD -->
+  <div class="app-header" id="appHeader" style="display:none;">
+    <img id="appLogo" src="" alt="logo" onerror="this.style.visibility='hidden'">
+    <div>
+      <div class="app-title" id="appNamaLembaga">Memuat...</div>
+      <div class="app-subtitle" id="appPeriode"></div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading" class="loading-overlay" style="display:none;">
+    <div style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+    <div id="loadingText" style="margin-top: 16px; font-weight: 600; color: var(--text-main);">Memuat...</div>
+  </div>
+
+  <div class="app-body">
+    <div class="container">
+      <div class="top-nav">
+        <button class="btn-back" onclick="window.location.href='dashboard.html'">&larr;</button>
+        <div class="page-title" id="rekapTitle">Kelas - Mapel</div>
+      </div>
+      <div class="menu-grid">
+        <button class="menu-btn" onclick="bukaAspek('PENGETAHUAN')">Pengetahuan</button>
+        <button class="menu-btn" onclick="bukaAspek('KETERAMPILAN')">Keterampilan</button>
+        <button class="menu-btn" onclick="bukaAspek('SPIRITUAL')">Spiritual</button>
+        <button class="menu-btn" onclick="bukaAspek('SOSIAL')">Sosial</button>
+        <button class="menu-btn kehadiran" onclick="bukaAspek('KEHADIRAN')">Kehadiran</button>
+      </div>
+
+      <div class="section-label">Rekap Nilai</div>
+      <div class="table-responsive">
+        <table id="tableRekap">
+          <thead>
+            <tr>
+              <th class="sticky-col text-left">Nama Siswa</th>
+              <th>Peng.</th>
+              <th>Ket.</th>
+              <th>Spi.</th>
+              <th>Sos.</th>
+              <th>H</th>
+              <th>S</th>
+              <th>I</th>
+              <th>A</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyRekap"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    // ==========================================
+    // INISIALISASI HALAMAN
+    // ==========================================
+    let currentClass = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const ok = await ensureLoggedIn();
+      if (!ok) return; // sudah diarahkan ke index.html oleh ensureLoggedIn()
+
+      currentClass = getCurrentClass();
+      if (!currentClass || !currentClass.kelas || !currentClass.mapel) {
+        // Halaman ini dibuka langsung tanpa melalui dashboard -> tidak ada
+        // konteks kelas/mapel yang bisa ditampilkan.
+        window.location.href = 'dashboard.html';
+        return;
+      }
+
+      loadAppHeaderFromCache();
+      openRekap(currentClass.kelas, currentClass.mapel);
+    });
+
+    // Menyimpan aspek yang dipilih ke sessionStorage, lalu pindah ke
+    // aspek.html (navigasi halaman sungguhan, bukan SPA).
+    function bukaAspek(aspek) {
+      setCurrentAspek(aspek);
+      window.location.href = 'aspek.html';
+    }
+
+    // ==========================================
+    // REKAP & MENU ASPEK
+    // ==========================================
+    async function openRekap(kelas, mapel) {
+      document.getElementById('rekapTitle').textContent = `${kelas} • ${mapel}`;
+
+      const tbody = document.getElementById('tbodyRekap');
+      tbody.innerHTML = '<tr><td colspan="9">Memuat data offline...</td></tr>';
+
+      try {
+        // 1. Ambil data siswa & nilai offline
+        const siswa = await kStorage.getJSON(siswaTag(kelas), null);
+        if (!siswa) {
+          tbody.innerHTML = `<tr><td colspan="9" style="color:red;">Data siswa belum tersinkron. Kembali ke Dashboard dan tekan "Sinkron Data" terlebih dahulu.</td></tr>`;
+          return;
+        }
+
+        const nilaiPerAspek = {};
+        for (const aspek of ASPEK_LIST) {
+          nilaiPerAspek[aspek] = await kStorage.getJSON(nilaiTag(kelas, mapel, aspek), {});
+        }
+
+        // 2. Hitung rekap offline (satu-satunya sumber data - tanpa fetch ke server)
+        const rekapOffline = hitungRekap_(siswa, nilaiPerAspek);
+
+        // 3. Render tabel murni dari data lokal
+        tbody.innerHTML = '';
+        siswa.forEach(s => {
+          const nOff = rekapOffline[s.nis] || {};
+
+          const tr = document.createElement('tr');
+          let html = `<td class="sticky-col text-left">${s.nama}</td>`;
+
+          const fields = ['pengetahuan', 'keterampilan', 'spiritual', 'sosial', 'hadir', 'sakit', 'izin', 'alfa'];
+          fields.forEach(f => {
+            const val = nOff[f];
+            const hasVal = val !== undefined && val !== null && val !== '' && val !== 0;
+            const displayVal = hasVal ? val : '-';
+            const className = 'value-cell' + (hasVal ? '' : ' empty');
+
+            html += `<td class="${className}">${displayVal}</td>`;
+          });
+
+          tr.innerHTML = html;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="9" style="color:red;">${e.message}</td></tr>`;
+      }
+    }
+
+    function hitungRekap_(siswa, nilaiPerAspek) {
+      const calcAvg = (obj) => {
+        const vals = Object.values(obj || {}).map(Number).filter(n => !isNaN(n));
+        if (!vals.length) return 0;
+        return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+      };
+      const countPresence = (obj, code) => {
+        return Object.values(obj || {}).filter(v => String(v).toUpperCase() === code).length;
+      };
+
+      const rekap = {};
+      siswa.forEach(s => {
+        const nis = s.nis;
+        rekap[nis] = {
+          pengetahuan: calcAvg(nilaiPerAspek.PENGETAHUAN[nis]),
+          keterampilan: calcAvg(nilaiPerAspek.KETERAMPILAN[nis]),
+          spiritual: calcAvg(nilaiPerAspek.SPIRITUAL[nis]),
+          sosial: calcAvg(nilaiPerAspek.SOSIAL[nis]),
+          hadir: countPresence(nilaiPerAspek.KEHADIRAN[nis], 'H'),
+          sakit: countPresence(nilaiPerAspek.KEHADIRAN[nis], 'S'),
+          izin: countPresence(nilaiPerAspek.KEHADIRAN[nis], 'I'),
+          alfa: countPresence(nilaiPerAspek.KEHADIRAN[nis], 'A')
+        };
+      });
+      return rekap;
+    }
+  </script>
+</body>
+
+</html>

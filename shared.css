@@ -1,0 +1,380 @@
+/* ==========================================================
+   SHARED.CSS
+   Dipakai bersama oleh index.html, dashboard.html, rekap.html,
+   dan aspek.html. Berisi variabel warna, reset dasar, header
+   aplikasi, tombol umum, tabel, modal dasar (alert/konfirmasi),
+   dan loading overlay.
+   ========================================================== */
+
+:root {
+  --primary: #1a7a5e;
+  --primary-dark: #145f49;
+  --bg-color: #05822d;
+  --card-bg: #ffffff;
+  --text-main: #1a3c34;
+  --text-muted: #666666;
+  --border-color: #e2e8f0;
+  --error: #e53e3e;
+  --success: #38a169;
+  --online-color: #2b6cb0;
+  --offline-color: #ed8936;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: transparent;
+  color: var(--text-main);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================
+   HEADER CARD
+   ============================ */
+.app-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--card-bg);
+  margin: 5px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border-color: #016922;
+}
+
+.app-header img {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+}
+
+.app-header .app-title {
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.app-header .app-subtitle {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.app-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  padding: 5px 5px;
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ============================
+   TOMBOL UMUM
+   ============================ */
+.btn-main {
+  width: 100%;
+  padding: 14px;
+  background: #086102;
+  color: rgb(255, 255, 255);
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-main:active {
+  background: #075ac7;
+}
+
+.btn-main:disabled {
+  background: #d86309;
+}
+
+.btn-danger {
+  background: var(--error);
+  color: #fff;
+  border: none;
+  padding: 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+/* ============================
+   TOP NAV (dipakai rekap.html & aspek.html)
+   ============================ */
+.top-nav {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.btn-back {
+  background: #e2e8f0;
+  border: none;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.btn-back:active {
+  background: #cbd5e0;
+}
+
+.page-title {
+  font-size: 16px;
+  font-weight: 700;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================
+   TABEL (dipakai rekap.html & aspek.html)
+   ============================ */
+.table-responsive {
+  overflow-x: auto;
+  overflow-y: auto;
+  background: var(--card-bg);
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 12px;
+}
+
+table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th,
+td {
+  padding: 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  font-weight: 600;
+  color: var(--text-muted);
+  z-index: 2;
+}
+
+td.text-left {
+  text-align: left;
+}
+
+.sticky-col {
+  position: sticky;
+  left: 0;
+  background: var(--card-bg);
+  z-index: 1;
+  border-right: 1px solid var(--border-color);
+  min-width: 150px;
+}
+
+th.sticky-col {
+  background: #f8fafc;
+  z-index: 3;
+}
+
+/* ============================
+   STATUS WARNA NILAI
+   ============================ */
+.value-online {
+  color: var(--online-color);
+  font-weight: 700;
+}
+
+.value-offline {
+  color: var(--offline-color);
+  font-weight: 600;
+  font-style: italic;
+}
+
+.value-online::before {
+  content: "✓ ";
+  font-size: 11px;
+}
+
+.value-offline::before {
+  content: "⟳ ";
+  font-size: 11px;
+}
+
+.value-cell {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.value-cell.empty {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.status-msg {
+  text-align: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  min-height: 18px;
+}
+
+/* ============================
+   LOADING OVERLAY
+   ============================ */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.15);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================
+   MODAL DASAR (Alert & Konfirmasi)
+   Dipakai di dashboard.html & aspek.html.
+   Modal lain yang lebih spesifik (pilihan hapus/edit/kolom)
+   didefinisikan langsung di aspek.html.
+   ============================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 500;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-card {
+  background: var(--card-bg);
+  width: 100%;
+  max-width: 600px;
+  max-height: 82vh;
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-main);
+}
+
+.modal-close {
+  background: #edf2f7;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.modal-body {
+  padding: 8px 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: 12px 16px;
+  display: flex;
+  gap: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.modal-footer .btn-secondary {
+  flex: 1;
+  background: #edf2f7;
+  color: var(--text-main);
+  border: none;
+  padding: 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modal-footer .btn-main {
+  flex: 2;
+}
+
+.modal-footer.stack {
+  flex-direction: column;
+}
+
+.modal-footer.stack .btn-secondary,
+.modal-footer.stack .btn-main,
+.modal-footer.stack .btn-danger {
+  flex: none;
+  width: 100%;
+}

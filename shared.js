@@ -1,0 +1,395 @@
+// ==========================================================
+// SHARED.JS
+// Dipakai bersama oleh index.html, dashboard.html, rekap.html,
+// dan aspek.html. Wajib dimuat SEBELUM script khusus tiap
+// halaman (<script src="shared.js"></script> sebelum script
+// halaman itu sendiri).
+//
+// Karena sekarang setiap halaman adalah dokumen HTML terpisah
+// (navigasi via window.location, bukan SPA), state seperti
+// `user`, kelas/mapel yang sedang dibuka, dan aspek yang sedang
+// dibuka DISIMPAN ULANG lewat sessionStorage setiap kali
+// berpindah halaman, lalu dibaca ulang di halaman tujuan.
+// ==========================================================
+
+// ==========================================
+// CONFIGURATION
+// ==========================================
+const API_URL = "https://script.google.com/macros/s/AKfycbx5B_NzjJr7wtcLq3ocnsIS51XbNN8BcecM9L8pe86ouwxKSrBKaORz2q8di1YbyD4_/exec";
+// TODO: Ganti dengan URL deployment Google Apps Script yang baru!
+
+const ASPEK_LIST = ['PENGETAHUAN', 'KETERAMPILAN', 'SPIRITUAL', 'SOSIAL', 'KEHADIRAN'];
+
+// State dalam-memori untuk halaman yang sedang aktif saja (di-reset
+// setiap kali dokumen dimuat ulang). Diisi oleh ensureLoggedIn()/
+// getCurrentClass()/getCurrentAspek().
+let user = null;
+
+// ==========================================
+// CORE UTILS
+// ==========================================
+async function apiCall(action, params = {}) {
+  const payload = Object.assign({ action }, params);
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+    return res.json();
+  } catch (e) {
+    console.error("API Error:", e);
+    return { success: false, message: "Koneksi ke server gagal.", offline: true };
+  }
+}
+
+function showLoading(show, text = 'Memuat...') {
+  const loadingText = document.getElementById('loadingText');
+  const loading = document.getElementById('loading');
+  if (loadingText) loadingText.textContent = text;
+  if (loading) loading.style.display = show ? 'flex' : 'none';
+}
+
+function formatWaktu_(iso) {
+  try {
+    return new Date(iso).toLocaleString('id-ID');
+  } catch (e) {
+    return iso;
+  }
+}
+
+// ==========================================
+// JEMBATAN KE TINYDB KODULAR
+// ==========================================
+const kPending = {};
+let kReqCounter = 0;
+
+// Dipanggil dari Kodular via EvaluateJavaScript.
+// PENTING: parameter dikirim TERPISAH (bukan satu JSON string) agar isi
+// `payload` (data siswa/nilai yang bisa mengandung kutip, backslash, dst)
+// tidak perlu di-escape jadi JSON valid di sisi Kodular — cukup di-encode
+// dengan Web1.URIEncode lalu didekode via decodeURIComponent() di sini.
+// reqId, opType, success TIDAK BOLEH mengandung data bebas (harus berupa
+// token internal yang dibuat sistem, misal reqId/op), karena nilai-nilai
+// itu ditulis langsung sebagai literal string di blok Kodular.
+window.__kodularResponse = function (reqId, opType, success, payload) {
+  try {
+    const pending = kPending[reqId];
+    if (!pending) return;
+    delete kPending[reqId];
+
+    // Web1.URIEncode di Kodular meng-encode spasi sebagai '+' (gaya Java
+    // URLEncoder), sedangkan decodeURIComponent() di JS TIDAK mengubah
+    // '+' balik jadi spasi (hanya menangani %XX). Tanpa baris ini, semua
+    // spasi di data (nama siswa, dll.) akan muncul sebagai '+' literal.
+    if (typeof payload === 'string') {
+      payload = payload.split('+').join(' ');
+    }
+
+    if (!success) {
+      pending.reject(new Error(payload || 'Operasi TinyDB gagal'));
+      return;
+    }
+
+    if (opType === 'LIST') {
+      // Tag internal aplikasi ini selalu aman (huruf/angka/underscore saja,
+      // lihat tagSafe()), jadi aman dipisah dengan koma tanpa encoding khusus.
+      const tags = payload ? payload.split(',').filter(Boolean) : [];
+      pending.resolve({ success: true, tags });
+    } else {
+      // GET dan lainnya: payload adalah string mentah (mis. hasil
+      // JSON.stringify dari sisi web sebelumnya), sudah didekode utuh.
+      pending.resolve({ success: true, value: payload });
+    }
+  } catch (e) {
+    console.error('Gagal memproses respons Kodular:', e);
+  }
+};
+
+function kSend_(op, tag, value) {
+  return new Promise((resolve, reject) => {
+    if (!window.AppInventor || !window.AppInventor.setWebViewString) {
+      reject(new Error('Bridge Kodular (AppInventor) tidak tersedia. Buka aplikasi ini melalui WebViewer di Kodular.'));
+      return;
+    }
+    const reqId = 'r' + (++kReqCounter) + '_' + Date.now();
+    kPending[reqId] = { resolve, reject };
+
+    const payload = { reqId, op, tag };
+    if (value !== undefined) payload.value = value;
+
+    window.AppInventor.setWebViewString(JSON.stringify(payload));
+
+    setTimeout(() => {
+      if (kPending[reqId]) {
+        delete kPending[reqId];
+        reject(new Error('Waktu tunggu TinyDB habis untuk operasi ' + op + ' (' + tag + ')'));
+      }
+    }, 8000);
+  });
+}
+
+const kStorage = {
+  async get(tag) {
+    const res = await kSend_('GET', tag);
+    return (res.value !== undefined && res.value !== null && res.value !== '') ? res.value : null;
+  },
+  async set(tag, value) {
+    await kSend_('SET', tag, value);
+    return true;
+  },
+  async delete(tag) {
+    await kSend_('DELETE', tag);
+    return true;
+  },
+  async list(prefix) {
+    const res = await kSend_('LIST', prefix || '');
+    return res.tags || [];
+  },
+  async getJSON(tag, fallback = null) {
+    const v = await this.get(tag);
+    if (!v) return fallback;
+    try { return JSON.parse(v); } catch (e) { return fallback; }
+  },
+  async setJSON(tag, obj) {
+    return this.set(tag, JSON.stringify(obj));
+  }
+};
+
+function tagSafe(str) {
+  return String(str).trim().replace(/[^a-zA-Z0-9]+/g, '_').toUpperCase();
+}
+
+function siswaTag(kelas) {
+  return 'SISWA_' + tagSafe(kelas);
+}
+
+function nilaiTag(kelas, mapel, aspek) {
+  return 'NILAI_' + tagSafe(kelas) + '_' + tagSafe(mapel) + '_' + tagSafe(aspek);
+}
+
+function nilaiSyncMetaTag(kelas, mapel, aspek) {
+  return 'NILAI_SYNC_META_' + tagSafe(kelas) + '_' + tagSafe(mapel) + '_' + tagSafe(aspek);
+}
+
+function nilaiPendingDeleteTag(kelas, mapel, aspek) {
+  return 'NILAI_PENDING_DELETE_' + tagSafe(kelas) + '_' + tagSafe(mapel) + '_' + tagSafe(aspek);
+}
+
+function userSessionTag() {
+  return 'USER_SESSION';
+}
+
+function infoLembagaTag() {
+  return 'INFO_LEMBAGA';
+}
+
+// ==========================================
+// CUSTOM MODAL (ganti alert dan confirm)
+// Markup #modalAlert dan #modalKonfirmasi harus ada di halaman
+// yang memanggil showAlert()/showKonfirmasi() (lihat dashboard.html
+// dan aspek.html).
+// ==========================================
+let __modalKonfirmasiResolve = null;
+function showKonfirmasi(msg, title = 'Konfirmasi') {
+  return new Promise(resolve => {
+    __modalKonfirmasiResolve = resolve;
+    document.getElementById('modalKonfirmasiTitle').textContent = title;
+    document.getElementById('modalKonfirmasiMsg').textContent = msg;
+    document.getElementById('modalKonfirmasi').classList.add('active');
+  });
+}
+function modalKonfirmasiResolve_(val) {
+  document.getElementById('modalKonfirmasi').classList.remove('active');
+  if (__modalKonfirmasiResolve) { __modalKonfirmasiResolve(val); __modalKonfirmasiResolve = null; }
+}
+
+let __modalAlertResolve = null;
+function showAlert(msg, title = 'Informasi') {
+  return new Promise(resolve => {
+    __modalAlertResolve = resolve;
+    document.getElementById('modalAlertTitle').textContent = title;
+    document.getElementById('modalAlertMsg').textContent = msg;
+    document.getElementById('modalAlert').classList.add('active');
+  });
+}
+function modalAlertResolve_() {
+  document.getElementById('modalAlert').classList.remove('active');
+  if (__modalAlertResolve) { __modalAlertResolve(); __modalAlertResolve = null; }
+}
+
+// ==========================================
+// STATE ANTAR HALAMAN (sessionStorage)
+// ==========================================
+function setCurrentClass(kelas, mapel) {
+  sessionStorage.setItem('currentClass', JSON.stringify({ kelas, mapel }));
+}
+function getCurrentClass() {
+  try {
+    return JSON.parse(sessionStorage.getItem('currentClass'));
+  } catch (e) {
+    return null;
+  }
+}
+function setCurrentAspek(aspek) {
+  sessionStorage.setItem('currentAspek', aspek);
+}
+function getCurrentAspek() {
+  return sessionStorage.getItem('currentAspek') || null;
+}
+
+// ==========================================
+// SESI LOGIN
+// ==========================================
+// Dipanggil di awal dashboard.html, rekap.html, dan aspek.html.
+// Mengisi variabel global `user`. Jika tidak ada sesi valid,
+// mengarahkan (redirect) balik ke index.html dan mengembalikan false
+// -- pemanggil harus langsung `return` saat hasilnya false.
+async function ensureLoggedIn() {
+  const savedUser = sessionStorage.getItem('user');
+  if (savedUser) {
+    try {
+      user = JSON.parse(savedUser);
+      return true;
+    } catch (e) {
+      // lanjut ke pengecekan TinyDB di bawah
+    }
+  }
+
+  // sessionStorage kosong (mis. WebView baru dibuka langsung ke halaman
+  // ini) -> coba pulihkan dari sesi tersimpan di TinyDB, sama seperti
+  // auto-login di splash screen.
+  try {
+    const savedSession = await kStorage.getJSON(userSessionTag(), null);
+    if (savedSession && savedSession.username && savedSession.password) {
+      const loginRes = await apiCall('login', { username: savedSession.username, password: savedSession.password });
+      if (loginRes.success) {
+        user = loginRes;
+        sessionStorage.setItem('user', JSON.stringify(user));
+        return true;
+      }
+      if (loginRes.offline) {
+        user = { username: savedSession.username, nama: savedSession.nama || savedSession.username, role: savedSession.role };
+        sessionStorage.setItem('user', JSON.stringify(user));
+        return true;
+      }
+    }
+  } catch (e) {
+    console.log('Tidak bisa membaca session dari TinyDB:', e);
+  }
+
+  window.location.href = 'index.html';
+  return false;
+}
+
+async function logout() {
+  sessionStorage.removeItem('user');
+  sessionStorage.removeItem('currentClass');
+  sessionStorage.removeItem('currentAspek');
+  user = null;
+
+  // Hapus session dari TinyDB
+  try {
+    await kStorage.delete(userSessionTag());
+  } catch (e) {
+    console.log('Tidak bisa menghapus session dari TinyDB:', e);
+  }
+
+  if (window.AppInventor) {
+    window.AppInventor.setWebViewString(JSON.stringify({
+      status: "logout",
+      waktu: Date.now()
+    }));
+  }
+
+  window.location.href = 'index.html';
+}
+
+// ==========================================
+// HEADER: INFO LEMBAGA (versi ringan, tanpa splash)
+// Dipakai di dashboard.html, rekap.html, aspek.html untuk mengisi
+// header dari cache TinyDB yang sudah disimpan saat index.html
+// pertama kali dibuka. Lihat index.html untuk versi lengkap yang
+// juga mengurus splash screen.
+// ==========================================
+async function loadAppHeaderFromCache() {
+  const headerEl = document.getElementById('appHeader');
+  if (!headerEl) return;
+  try {
+    const res = await kStorage.getJSON(infoLembagaTag(), null);
+    if (!res || !res.success) {
+      headerEl.style.display = 'none';
+      return;
+    }
+    document.getElementById('appNamaLembaga').textContent = res.namaLembaga || '';
+    const periodeText = [res.tahunAjaran, res.semester].filter(Boolean).join(' ');
+    document.getElementById('appPeriode').textContent = periodeText;
+
+    const logoEl = document.getElementById('appLogo');
+    if (res.logoUrl) {
+      logoEl.src = res.logoUrl;
+      logoEl.style.visibility = 'visible';
+    } else {
+      logoEl.style.visibility = 'hidden';
+    }
+
+    if (res.appNama) document.title = res.appNama;
+    headerEl.style.display = 'flex';
+  } catch (e) {
+    headerEl.style.display = 'none';
+  }
+}
+
+// ==========================================
+// SINKRON DATA GURU (assignments + data siswa per kelas, TANPA nilai)
+// - Otomatis: dipicu hanya saat login manual (lihat index.html).
+// - Manual: dipicu tombol "Sinkron Data Guru" di dashboard.html.
+// ==========================================
+async function refreshSyncStatus() {
+  const statusEl = document.getElementById('syncStatus');
+  if (!statusEl) return;
+  try {
+    const meta = await kStorage.getJSON('SYNC_META', null);
+    statusEl.textContent = (meta && meta.syncedAt) ?
+      'Tersinkron: ' + formatWaktu_(meta.syncedAt) :
+      'Belum pernah sinkron';
+  } catch (e) {
+    statusEl.textContent = 'Mode online (bridge TinyDB tidak terdeteksi)';
+  }
+}
+
+async function sinkronData(silent = false) {
+  const btn = document.getElementById('btnSinkron');
+  const statusEl = document.getElementById('syncStatus');
+  if (btn) btn.disabled = true;
+  showLoading(true, 'Menyinkronkan data...');
+
+  try {
+    const res = await apiCall('getSyncData', { username: user.username });
+    if (!res.success) {
+      if (!silent) await showAlert('Gagal sinkron: ' + res.message, 'Gagal');
+      return;
+    }
+
+    await kStorage.setJSON('ASSIGNMENTS', res.assignments);
+
+    const kelasList = Object.keys(res.siswaByKelas);
+    for (const kelas of kelasList) {
+      await kStorage.setJSON(siswaTag(kelas), res.siswaByKelas[kelas]);
+    }
+
+    await kStorage.setJSON('SYNC_META', {
+      syncedAt: res.syncedAt,
+      nama: res.nama,
+      periode: res.periode
+    });
+
+    if (statusEl) statusEl.textContent = 'Tersinkron: ' + formatWaktu_(res.syncedAt);
+    if (!silent) await showAlert('Sinkron berhasil ✓\n' + res.assignments.length + ' kelas/mapel & data siswa tersimpan offline.\nSekarang input nilai bisa dilakukan tanpa internet.', 'Sinkron Berhasil');
+  } catch (e) {
+    if (!silent) await showAlert('Gagal sinkron: ' + e.message, 'Gagal');
+  } finally {
+    showLoading(false);
+    if (btn) btn.disabled = false;
+  }
+}
