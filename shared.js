@@ -391,6 +391,18 @@ async function sinkronData(silent = false) {
       await kStorage.setJSON(siswaTag(kelas), res.siswaByKelas[kelas]);
     }
 
+    // Info wali kelas ikut disimpan di sini (satu aksi sinkron untuk
+    // semuanya) -- bentuknya disamakan dengan hasil getWaliKelasInfo
+    // (success/isWaliKelas/kelasList) supaya konsumen cache (dashboard.html)
+    // tidak perlu tahu bedanya data ini datang dari sinkron atau dari
+    // pemanggilan langsung.
+    const wk = res.waliKelasInfo || { isWaliKelas: false, kelasList: [] };
+    await kStorage.setJSON(waliKelasInfoTag(), {
+      success: true,
+      isWaliKelas: wk.isWaliKelas,
+      kelasList: wk.kelasList
+    });
+
     await kStorage.setJSON('SYNC_META', {
       syncedAt: res.syncedAt,
       nama: res.nama,
@@ -398,7 +410,13 @@ async function sinkronData(silent = false) {
     });
 
     if (statusEl) statusEl.textContent = 'Tersinkron: ' + formatWaktu_(res.syncedAt);
-    if (!silent) await showAlert('Sinkron berhasil ✓\n' + res.assignments.length + ' kelas/mapel & data siswa tersimpan offline.\nSekarang input nilai bisa dilakukan tanpa internet.', 'Sinkron Berhasil');
+    if (!silent) {
+      const bagianMapel = res.assignments.length ?
+        res.assignments.length + ' kelas/mapel & data siswa tersimpan offline.' :
+        'Tidak ada kelas/mapel yang diampu untuk periode ini.';
+      const infoWali = wk.isWaliKelas ? '\nData wali kelas tersinkron.' : '';
+      await showAlert('Sinkron berhasil ✓\n' + bagianMapel + infoWali + (res.assignments.length ? '\nSekarang input nilai bisa dilakukan tanpa internet.' : ''), 'Sinkron Berhasil');
+    }
   } catch (e) {
     if (!silent) await showAlert('Gagal sinkron: ' + e.message, 'Gagal');
   } finally {
