@@ -179,8 +179,26 @@ window.__kodularResponse = function (reqId, opType, success, payload) {
   }
 };
 
+// ----------------------------------------------------------
+// ANTRIAN kSend_() -- channel window.AppInventor.setWebViewString()
+// cuma menampung SATU pesan dalam satu waktu (bukan antrian bawaan).
+// Kalau beberapa halaman/fungsi memanggil kStorage.get/set secara
+// BERSAMAAN (mis. dashboard.html menembak banyak kStorage.getJSON()
+// sekaligus saat DOMContentLoaded), pesan yang lebih dulu bisa ketimpa
+// oleh pesan berikutnya sebelum sisi Kodular sempat membacanya --
+// request yang ketimpa itu tidak pernah dapat balasan dan macet
+// sampai timeout 8 detik (biasanya tertangkap try/catch di pemanggil
+// dan dianggap "kosong", padahal datanya sebenarnya ADA).
+//
+// kSendQueue_ memastikan setiap kSend_() BARU baru dikirim SETELAH
+// kSend_() sebelumnya benar-benar selesai (dapat balasan ATAU
+// timeout) -- jadi tidak akan pernah ada dua pesan di channel yang
+// sama secara bersamaan.
+// ----------------------------------------------------------
+let kSendQueue_ = Promise.resolve();
+
 function kSend_(op, tag, value) {
-  return new Promise((resolve, reject) => {
+  const runNow = () => new Promise((resolve, reject) => {
     if (!window.AppInventor || !window.AppInventor.setWebViewString) {
       reject(new Error('Bridge Kodular (AppInventor) tidak tersedia. Buka aplikasi ini melalui WebViewer di Kodular.'));
       return;
@@ -200,6 +218,14 @@ function kSend_(op, tag, value) {
       }
     }, 8000);
   });
+
+  // Antre di belakang panggilan sebelumnya -- .then(runNow, runNow) supaya
+  // tetap lanjut ke request berikutnya walau request sebelumnya gagal/reject.
+  const result = kSendQueue_.then(runNow, runNow);
+  // Simpan versi yang "tidak pernah reject" sebagai queue berikutnya, supaya
+  // satu kegagalan tidak membuat SEMUA antrian setelahnya ikut batal terkirim.
+  kSendQueue_ = result.then(() => {}, () => {});
+  return result;
 }
 
 const kStorage = {
@@ -469,7 +495,7 @@ async function refreshSyncStatus() {
   }
 }
 
-async function sinkronData(silent = false) {
+async function sinkronData(silent = false, onSaved = null) {
   const btn = document.getElementById('btnSinkron');
   const statusEl = document.getElementById('syncStatus');
   if (btn) btn.disabled = true;
@@ -523,6 +549,15 @@ async function sinkronData(silent = false) {
     });
 
     if (statusEl) statusEl.textContent = 'Tersinkron: ' + formatWaktu_(res.syncedAt);
+
+    // Refresh UI (card Wali Kelas/Musrif dkk) SEGERA setelah data tersimpan,
+    // SEBELUM modal "Sinkron Berhasil" ditampilkan -- supaya tampilan sudah
+    // benar duluan di belakang modal, tidak menunggu user menekan OK
+    // (showAlert() di bawah ini baru resolve setelah modal ditutup manual).
+    if (typeof onSaved === 'function') {
+      try { await onSaved(); } catch (e) { }
+    }
+
     if (!silent) {
       const bagianMapel = res.assignments.length ?
         res.assignments.length + ' kelas/mapel & data siswa tersimpan offline.' :

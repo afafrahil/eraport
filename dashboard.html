@@ -272,6 +272,10 @@
         </button>
       </div>
 
+      <div id="debugCache" style="font-size:10px; color:#94a3b8; background:#f8fafc; border:1px dashed #cbd5e0; border-radius:8px; padding:8px; margin-bottom:12px; white-space:pre-wrap; word-break:break-all; flex-shrink:0;">
+        (debug cache belum dimuat)
+      </div>
+
       <div class="halaqoh-section" id="halaqohSection">
         <div id="halaqohList"></div>
       </div>
@@ -326,6 +330,30 @@
     // ==========================================
     let assignments = [];
 
+    // ==========================================
+    // DEBUG SEMENTARA -- menampilkan isi MENTAH cache TinyDB yang
+    // dipakai card Wali Kelas & Musrif, langsung di layar. Tujuannya
+    // supaya screenshot biasa dari pengguna sudah cukup jadi bukti,
+    // tanpa perlu langkah tambahan (buka console, fetch manual, dst).
+    // Hapus blok ini (dan elemen #debugCache di HTML) setelah masalah
+    // wali kelas selesai.
+    // ==========================================
+    async function renderDebugCache() {
+      const el = document.getElementById('debugCache');
+      if (!el) return;
+      try {
+        const wk = await kStorage.getJSON(waliKelasInfoTag(), '(kosong/null)');
+        const hal = await kStorage.getJSON(halaqohAssignmentsTag(), '(kosong/null)');
+        const meta = await kStorage.getJSON('SYNC_META', '(kosong/null)');
+        el.textContent =
+          'DEBUG SYNC_META: ' + JSON.stringify(meta) + '\n' +
+          'DEBUG WALIKELAS_INFO: ' + JSON.stringify(wk) + '\n' +
+          'DEBUG HALAQOH_ASSIGNMENTS: ' + JSON.stringify(hal);
+      } catch (e) {
+        el.textContent = 'DEBUG ERROR: ' + e.message;
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
       const ok = await ensureLoggedIn();
       if (!ok) return; // sudah diarahkan ke index.html oleh ensureLoggedIn()
@@ -334,6 +362,7 @@
       loadDashboard();
       loadWaliKelasSection();
       loadHalaqohSection();
+      renderDebugCache();
     });
 
     // ==========================================
@@ -436,9 +465,12 @@
     // render ulang kartu Wali Kelas & Halaqoh supaya langsung
     // mencerminkan hasil terbaru tanpa perlu reload halaman.
     async function handleSinkronClick() {
-      await sinkronData();
-      loadWaliKelasSection();
-      loadHalaqohSection();
+      await sinkronData(false, async () => {
+        loadDashboard();
+        loadWaliKelasSection();
+        loadHalaqohSection();
+        renderDebugCache();
+      });
     }
 
     function bukaWaliKelas(kelas) {
