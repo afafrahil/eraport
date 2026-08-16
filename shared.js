@@ -15,8 +15,9 @@
 // ==========================================
 // CONFIGURATION
 // ==========================================
-const API_URL = "https://script.google.com/macros/s/AKfycbx5B_NzjJr7wtcLq3ocnsIS51XbNN8BcecM9L8pe86ouwxKSrBKaORz2q8di1YbyD4_/exec";
+//const API_URL = "https://script.google.com/macros/s/AKfycbx5B_NzjJr7wtcLq3ocnsIS51XbNN8BcecM9L8pe86ouwxKSrBKaORz2q8di1YbyD4_/exec";
 // TODO: Ganti dengan URL deployment Google Apps Script yang baru!
+const API_URL = "https://eraport-worker.rdmi.workers.dev";
 
 const ASPEK_LIST = ['PENGETAHUAN', 'KETERAMPILAN', 'SPIRITUAL', 'SOSIAL', 'KEHADIRAN'];
 
