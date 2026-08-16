@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Nilai Tilawah - Aplikasi Penilaian</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    /* ============================
+       CONTROL BAR: TANGGAL & JENIS EVALUASI
+       ============================ */
+    .control-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+
+    .control-field {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .control-field label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .control-field input,
+    .control-field select {
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 14px;
+      background: var(--card-bg);
+      font-family: inherit;
+    }
+
+    .control-field input:focus,
+    .control-field select:focus {
+      border-color: var(--primary);
+      outline: none;
+    }
+
+    /* ============================
+       SUMMARY
+       ============================ */
+    .summary-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+
+    .summary-box {
+      flex: 1;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+
+    .summary-box .num {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1.2;
+    }
+
+    .summary-box .lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ============================
+       SEARCH
+       ============================ */
+    .search-wrap {
+      margin-bottom: 12px;
+      flex-shrink: 0;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 14px;
+      background: var(--card-bg);
+    }
+
+    .search-wrap input:focus {
+      border-color: var(--primary);
+      outline: none;
+    }
+
+    /* ============================
+       TABEL SISWA
+       ============================ */
+    .siswa-col {
+      min-width: 150px;
+      text-align: left !important;
+    }
+
+    tbody tr {
+      cursor: pointer;
+    }
+
+    tbody tr:active {
+      background: #f8fafc;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 24px 16px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .badge-predikat {
+      display: inline-block;
+      min-width: 26px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 13px;
+      background: #e6f4ef;
+      color: var(--primary);
+    }
+
+    .badge-belum {
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .status-cell {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* ============================
+       MODAL INPUT NILAI
+       ============================ */
+    .modal-siswa-header {
+      margin-bottom: 4px;
+    }
+
+    .modal-siswa-header .nama {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .modal-siswa-header .nis {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .modal-info-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .modal-info-chip {
+      flex: 1;
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+
+    .modal-info-chip .lbl {
+      color: var(--text-muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .modal-info-chip .val {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .bacaan-section {
+      margin-bottom: 16px;
+    }
+
+    .bacaan-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 8px;
+    }
+
+    .bacaan-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .bacaan-grid .full {
+      grid-column: 1 / -1;
+    }
+
+    .field-group label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .field-group input,
+    .field-group select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 14px;
+      background: #f8fafc;
+      font-family: inherit;
+    }
+
+    .field-group input:focus,
+    .field-group select:focus {
+      border-color: var(--primary);
+      outline: none;
+      background: #fff;
+    }
+
+    .form-row {
+      margin-bottom: 14px;
+    }
+
+    .form-row label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 6px;
+    }
+
+    .form-row select,
+    .form-row textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 14px;
+      background: #f8fafc;
+      font-family: inherit;
+    }
+
+    .form-row select:focus,
+    .form-row textarea:focus {
+      border-color: var(--primary);
+      outline: none;
+      background: #fff;
+    }
+
+    .form-row textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER CARD -->
+  <div class="app-header" id="appHeader" style="display:none;">
+    <img id="appLogo" src="" alt="logo" onerror="this.style.visibility='hidden'">
+    <div>
+      <div class="app-title" id="appNamaLembaga">Memuat...</div>
+      <div class="app-subtitle" id="appPeriode"></div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading" class="loading-overlay" style="display:none;">
+    <div style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+    <div id="loadingText" style="margin-top: 16px; font-weight: 600; color: var(--text-main);">Memuat...</div>
+  </div>
+
+  <div class="app-body">
+    <div class="container">
+      <div class="top-nav">
+        <button class="btn-back" onclick="window.location.href='dashboard.html'">&larr;</button>
+        <div class="page-title" id="halaqohTitle">Nilai Tilawah</div>
+      </div>
+
+      <div class="summary-bar">
+        <div class="summary-box">
+          <div class="num" id="sumSiswa">-</div>
+          <div class="lbl">Siswa</div>
+        </div>
+        <div class="summary-box">
+          <div class="num" id="sumSudah">-</div>
+          <div class="lbl">Sudah Dinilai</div>
+        </div>
+        <div class="summary-box">
+          <div class="num" id="sumBelum">-</div>
+          <div class="lbl">Belum</div>
+        </div>
+      </div>
+
+      <div class="control-bar">
+        <div class="control-field">
+          <label>Tanggal</label>
+          <input type="date" id="inputWaktu" onchange="renderTabelHalaqoh()">
+        </div>
+      </div>
+
+      <div class="search-wrap">
+        <input type="text" id="searchSiswa" placeholder="Cari nama atau NIS siswa..." oninput="renderTabelHalaqoh()">
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th class="sticky-col siswa-col">Nama Siswa</th>
+              <th>Predikat</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tbodySiswaHalaqoh">
+            <tr><td class="empty-state" colspan="3">Memuat data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: INPUT / EDIT NILAI -->
+  <div id="modalNilai" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Input Nilai Tilawah</div>
+        <button class="modal-close" onclick="closeModalNilai()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:16px;">
+        <div class="modal-siswa-header">
+          <div class="nama" id="modalNamaSiswa">-</div>
+          <div class="nis" id="modalNisSiswa">-</div>
+        </div>
+
+        <div class="modal-info-row">
+          <div class="modal-info-chip">
+            <div class="lbl">Tanggal</div>
+            <div class="val" id="modalInfoTanggal">-</div>
+          </div>
+        </div>
+
+        <div class="bacaan-section">
+          <div class="bacaan-title">Mulai (minimal isi salah satu)</div>
+          <div class="bacaan-grid">
+            <div class="field-group">
+              <label>Surah</label>
+              <select id="mulaiSurah"></select>
+            </div>
+            <div class="field-group">
+              <label>Juz</label>
+              <select id="mulaiJuz"></select>
+            </div>
+            <div class="field-group">
+              <label>Halaman</label>
+              <input type="number" id="mulaiHalaman" inputmode="numeric" placeholder="-">
+            </div>
+            <div class="field-group">
+              <label>Ayat</label>
+              <input type="number" id="mulaiAyat" inputmode="numeric" placeholder="-">
+            </div>
+          </div>
+        </div>
+
+        <div class="bacaan-section">
+          <div class="bacaan-title">Selesai (minimal isi salah satu)</div>
+          <div class="bacaan-grid">
+            <div class="field-group">
+              <label>Surah</label>
+              <select id="selesaiSurah"></select>
+            </div>
+            <div class="field-group">
+              <label>Juz</label>
+              <select id="selesaiJuz"></select>
+            </div>
+            <div class="field-group">
+              <label>Halaman</label>
+              <input type="number" id="selesaiHalaman" inputmode="numeric" placeholder="-">
+            </div>
+            <div class="field-group">
+              <label>Ayat</label>
+              <input type="number" id="selesaiAyat" inputmode="numeric" placeholder="-">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label>Predikat</label>
+          <select id="inputPredikat"></select>
+        </div>
+
+        <div class="form-row">
+          <label>Status</label>
+          <select id="inputStatus"></select>
+        </div>
+
+        <div class="form-row" style="margin-bottom:0;">
+          <label>Catatan</label>
+          <textarea id="inputCatatan" placeholder="Catatan tambahan (opsional)"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModalNilai()">Batal</button>
+        <button class="btn-main" id="btnSimpanNilai" onclick="simpanNilaiSiswa()">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ALERT CUSTOM (ganti alert()) -->
+  <div id="modalAlert" class="modal-overlay" style="z-index:1001;">
+    <div class="modal-card" style="max-height:auto;">
+      <div class="modal-header">
+        <div class="modal-title" id="modalAlertTitle">Informasi</div>
+      </div>
+      <div class="modal-body" style="padding:16px;">
+        <p id="modalAlertMsg" style="font-size:14px;line-height:1.6;color:var(--text-main);white-space:pre-line;"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-main" onclick="modalAlertResolve_()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    // ==========================================
+    // KONFIGURASI HALAMAN (beda dgn nilai-tilawah.html)
+    // ==========================================
+    const KEGIATAN_HALAMAN = 'TILAWAH';
+    const HAS_JENIS_EVALUASI = false;
+    const SAVE_ACTION = 'saveNilaiTilawah';
+
+    // ==========================================
+    // STATE
+    // ==========================================
+    let currentHalaqohInfo = null; // { halaqoh, kegiatan }
+    let daftarSiswa = [];          // dari getSiswaHalaqoh
+    let nilaiMap = {};             // NIS -> [ {waktu, jenisEvaluasi, mulai, selesai, predikat, status, catatan}, ... ]
+    let siswaAktifModal = null;    // siswa yang sedang dibuka di modal
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const ok = await ensureLoggedIn();
+      if (!ok) return;
+
+      currentHalaqohInfo = getCurrentHalaqoh();
+      if (!currentHalaqohInfo || currentHalaqohInfo.kegiatan !== KEGIATAN_HALAMAN) {
+        window.location.href = 'dashboard.html';
+        return;
+      }
+
+      document.getElementById('halaqohTitle').textContent = `Nilai Tilawah - ${currentHalaqohInfo.halaqoh}`;
+
+      // Tanggal default: hari ini
+      document.getElementById('inputWaktu').value = new Date().toISOString().slice(0, 10);
+
+      isiDropdownSurah();
+      isiDropdownJuz();
+      isiDropdownPredikatStatus();
+
+      loadAppHeaderFromCache();
+      await muatDataHalaqoh();
+    });
+
+    function isiDropdownSurah() {
+      const opsi = '<option value="">-</option>' + SURAH_LIST.map(s => `<option value="${s}">${s}</option>`).join('');
+      document.getElementById('mulaiSurah').innerHTML = opsi;
+      document.getElementById('selesaiSurah').innerHTML = opsi;
+    }
+
+    function isiDropdownJuz() {
+      const opsi = '<option value="">-</option>' + JUZ_LIST.map(j => `<option value="${j}">${j}</option>`).join('');
+      document.getElementById('mulaiJuz').innerHTML = opsi;
+      document.getElementById('selesaiJuz').innerHTML = opsi;
+    }
+
+    function isiDropdownPredikatStatus() {
+      document.getElementById('inputPredikat').innerHTML =
+        '<option value="">Pilih...</option>' + PREDIKAT_HALAQOH_LIST.map(p => `<option value="${p}">${p}</option>`).join('');
+      document.getElementById('inputStatus').innerHTML =
+        '<option value="">Pilih...</option>' + STATUS_HALAQOH_LIST.map(s => `<option value="${s}">${s}</option>`).join('');
+    }
+
+    // ==========================================
+    // MUAT DATA: daftar siswa + seluruh nilai yang sudah tersimpan
+    // ==========================================
+    async function muatDataHalaqoh() {
+      showLoading(true, 'Memuat data siswa...');
+
+      const resSiswa = await apiCall('getSiswaHalaqoh', {
+        username: user.username,
+        halaqoh: currentHalaqohInfo.halaqoh
+      });
+
+      if (!resSiswa.success) {
+        showLoading(false);
+        await showAlert(resSiswa.message || 'Gagal memuat data siswa.', 'Gagal');
+        document.getElementById('tbodySiswaHalaqoh').innerHTML =
+          `<tr><td class="empty-state" colspan="3" style="color:var(--error);">${resSiswa.message || 'Gagal memuat data.'}</td></tr>`;
+        return;
+      }
+
+      daftarSiswa = resSiswa.siswa || [];
+
+      showLoading(true, 'Memuat riwayat nilai...');
+      const resNilai = await apiCall('getRekapNilaiHalaqoh', {
+        username: user.username,
+        halaqoh: currentHalaqohInfo.halaqoh
+      });
+
+      showLoading(false);
+
+      if (!resNilai.success) {
+        await showAlert(resNilai.message || 'Gagal memuat riwayat nilai.', 'Gagal');
+        nilaiMap = {};
+      } else {
+        nilaiMap = resNilai.nilai || {};
+      }
+
+      renderTabelHalaqoh();
+    }
+
+    // Cari entri nilai siswa untuk tanggal (+ jenis evaluasi) yang sedang dipilih.
+    function cariEntriAktif(nis) {
+      const waktu = document.getElementById('inputWaktu').value;
+      const jenis = HAS_JENIS_EVALUASI ? document.getElementById('inputJenisEvaluasi').value : null;
+      const daftar = nilaiMap[String(nis)] || [];
+      return daftar.find(e =>
+        String(e.waktu) === String(waktu) &&
+        (!HAS_JENIS_EVALUASI || String(e.jenisEvaluasi) === String(jenis))
+      ) || null;
+    }
+
+    // ==========================================
+    // RENDER TABEL
+    // ==========================================
+    function renderTabelHalaqoh() {
+      const tbody = document.getElementById('tbodySiswaHalaqoh');
+      const keyword = (document.getElementById('searchSiswa').value || '').trim().toLowerCase();
+
+      const siswaFiltered = daftarSiswa.filter(s =>
+        !keyword || s.nama.toLowerCase().includes(keyword) || String(s.nis).includes(keyword)
+      );
+
+      if (!daftarSiswa.length) {
+        tbody.innerHTML = `<tr><td class="empty-state" colspan="3">Belum ada siswa terdaftar di kelompok Halaqoh ini.</td></tr>`;
+        document.getElementById('sumSiswa').textContent = 0;
+        document.getElementById('sumSudah').textContent = 0;
+        document.getElementById('sumBelum').textContent = 0;
+        return;
+      }
+
+      if (!siswaFiltered.length) {
+        tbody.innerHTML = `<tr><td class="empty-state" colspan="3">Tidak ada siswa yang cocok.</td></tr>`;
+        return;
+      }
+
+      let sudah = 0;
+      tbody.innerHTML = '';
+      siswaFiltered.forEach(s => {
+        const entri = cariEntriAktif(s.nis);
+        if (entri) sudah++;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="sticky-col siswa-col">${s.nama}<br><span style="font-size:11px;color:var(--text-muted);">${s.nis}</span></td>
+          <td>${entri ? `<span class="badge-predikat">${entri.predikat || '-'}</span>` : '<span class="badge-belum">Belum dinilai</span>'}</td>
+          <td class="status-cell">${entri ? (entri.status || '-') : '-'}</td>
+        `;
+        tr.onclick = () => bukaModalNilai(s);
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('sumSiswa').textContent = daftarSiswa.length;
+      document.getElementById('sumSudah').textContent = sudah;
+      document.getElementById('sumBelum').textContent = daftarSiswa.length - sudah;
+    }
+
+    // ==========================================
+    // MODAL INPUT NILAI
+    // ==========================================
+    function bukaModalNilai(siswa) {
+      siswaAktifModal = siswa;
+      const entri = cariEntriAktif(siswa.nis);
+      const waktu = document.getElementById('inputWaktu').value;
+
+      document.getElementById('modalNamaSiswa').textContent = siswa.nama;
+      document.getElementById('modalNisSiswa').textContent = 'NIS: ' + siswa.nis;
+      document.getElementById('modalInfoTanggal').textContent = waktu ? formatTanggalIndo_(waktu) : '-';
+
+      const mulai = uraiBacaan(entri ? entri.mulai : '');
+      const selesai = uraiBacaan(entri ? entri.selesai : '');
+
+      document.getElementById('mulaiSurah').value = mulai.surah || '';
+      document.getElementById('mulaiJuz').value = mulai.juz || '';
+      document.getElementById('mulaiHalaman').value = mulai.halaman || '';
+      document.getElementById('mulaiAyat').value = mulai.ayat || '';
+
+      document.getElementById('selesaiSurah').value = selesai.surah || '';
+      document.getElementById('selesaiJuz').value = selesai.juz || '';
+      document.getElementById('selesaiHalaman').value = selesai.halaman || '';
+      document.getElementById('selesaiAyat').value = selesai.ayat || '';
+
+      document.getElementById('inputPredikat').value = entri ? (entri.predikat || '') : '';
+      document.getElementById('inputStatus').value = entri ? (entri.status || '') : '';
+      document.getElementById('inputCatatan').value = entri ? (entri.catatan || '') : '';
+
+      document.getElementById('modalNilai').classList.add('active');
+    }
+
+    function closeModalNilai() {
+      document.getElementById('modalNilai').classList.remove('active');
+      siswaAktifModal = null;
+    }
+
+    function formatTanggalIndo_(iso) {
+      try {
+        return new Date(iso + 'T00:00:00').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      } catch (e) {
+        return iso;
+      }
+    }
+
+    // ==========================================
+    // SIMPAN (per siswa, langsung kirim ke server)
+    // ==========================================
+    async function simpanNilaiSiswa() {
+      if (!siswaAktifModal) return;
+
+      const waktu = document.getElementById('inputWaktu').value;
+      if (!waktu) {
+        await showAlert('Tanggal wajib dipilih.', 'Data Belum Lengkap');
+        return;
+      }
+
+      const jenisEvaluasi = HAS_JENIS_EVALUASI ? document.getElementById('inputJenisEvaluasi').value : undefined;
+
+      const mulai = gabungBacaan(
+        document.getElementById('mulaiSurah').value,
+        document.getElementById('mulaiJuz').value,
+        document.getElementById('mulaiHalaman').value,
+        document.getElementById('mulaiAyat').value
+      );
+      const selesai = gabungBacaan(
+        document.getElementById('selesaiSurah').value,
+        document.getElementById('selesaiJuz').value,
+        document.getElementById('selesaiHalaman').value,
+        document.getElementById('selesaiAyat').value
+      );
+
+      if (!mulai) {
+        await showAlert('Bagian "Mulai" wajib diisi minimal salah satu (Surah/Juz/Halaman/Ayat).', 'Data Belum Lengkap');
+        return;
+      }
+      if (!selesai) {
+        await showAlert('Bagian "Selesai" wajib diisi minimal salah satu (Surah/Juz/Halaman/Ayat).', 'Data Belum Lengkap');
+        return;
+      }
+
+      const predikat = document.getElementById('inputPredikat').value;
+      const status = document.getElementById('inputStatus').value;
+      if (!predikat) {
+        await showAlert('Predikat wajib dipilih.', 'Data Belum Lengkap');
+        return;
+      }
+      if (!status) {
+        await showAlert('Status wajib dipilih.', 'Data Belum Lengkap');
+        return;
+      }
+
+      const catatan = document.getElementById('inputCatatan').value.trim();
+
+      const item = {
+        nis: siswaAktifModal.nis,
+        nama: siswaAktifModal.nama,
+        waktu, mulai, selesai, predikat, status, catatan
+      };
+      if (HAS_JENIS_EVALUASI) item.jenisEvaluasi = jenisEvaluasi;
+
+      const btn = document.getElementById('btnSimpanNilai');
+      btn.disabled = true;
+      showLoading(true, 'Menyimpan nilai...');
+
+      const res = await apiCall(SAVE_ACTION, {
+        username: user.username,
+        halaqoh: currentHalaqohInfo.halaqoh,
+        data: [item]
+      });
+
+      showLoading(false);
+      btn.disabled = false;
+
+      if (!res.success) {
+        await showAlert(res.message || 'Gagal menyimpan nilai.', 'Gagal');
+        return;
+      }
+
+      // Perbarui cache nilai di memori supaya tabel langsung mencerminkan
+      // perubahan tanpa perlu memuat ulang seluruh rekap dari server.
+      const nis = String(siswaAktifModal.nis);
+      if (!nilaiMap[nis]) nilaiMap[nis] = [];
+      const idxLama = nilaiMap[nis].findIndex(e =>
+        String(e.waktu) === String(waktu) && (!HAS_JENIS_EVALUASI || String(e.jenisEvaluasi) === String(jenisEvaluasi))
+      );
+      const entriBaru = { waktu, mulai, selesai, predikat, status, catatan, username: user.username };
+      if (HAS_JENIS_EVALUASI) entriBaru.jenisEvaluasi = jenisEvaluasi;
+      if (idxLama >= 0) nilaiMap[nis][idxLama] = entriBaru;
+      else nilaiMap[nis].push(entriBaru);
+
+      closeModalNilai();
+      renderTabelHalaqoh();
+    }
+  </script>
+</body>
+
+</html>

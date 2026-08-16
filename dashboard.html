@@ -155,6 +155,74 @@
       font-weight: bold;
       flex-shrink: 0;
     }
+
+    /* ============================
+       KARTU HALAQOH (Musrif)
+       ============================ */
+    .halaqoh-section {
+      flex-shrink: 0;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .halaqoh-section.show {
+      display: block;
+    }
+
+    .halaqoh-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 8px;
+    }
+
+    .halaqoh-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: linear-gradient(135deg, #1a7a5e 0%, #145f49 100%);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(20, 95, 73, 0.25);
+      margin-bottom: 10px;
+    }
+
+    .halaqoh-card:active {
+      transform: scale(0.98);
+    }
+
+    .halaqoh-icon {
+      width: 42px;
+      height: 42px;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .halaqoh-title {
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      margin-bottom: 2px;
+    }
+
+    .halaqoh-subtitle {
+      color: rgba(255, 255, 255, 0.85);
+      font-size: 12px;
+    }
+
+    .halaqoh-arrow {
+      color: #fff;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 
@@ -194,6 +262,11 @@
       <div class="walikelas-section" id="waliKelasSection">
         <div class="walikelas-label">Tugas Tambahan</div>
         <div id="waliKelasList"></div>
+      </div>
+
+      <div class="halaqoh-section" id="halaqohSection">
+        <div class="halaqoh-label">Musrif Halaqoh</div>
+        <div id="halaqohList"></div>
       </div>
 
       <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--card-bg); border:1px solid var(--border-color); border-radius:10px; padding:10px 12px; margin-bottom:12px; flex-shrink:0;">
@@ -253,6 +326,7 @@
       loadAppHeaderFromCache();
       loadDashboard();
       loadWaliKelasSection();
+      loadHalaqohSection();
     });
 
     // ==========================================
@@ -361,6 +435,53 @@
     function bukaWaliKelas(kelas) {
       setCurrentWaliKelas(kelas);
       window.location.href = 'walikelas.html';
+    }
+
+    // ==========================================
+    // HALAQOH (Musrif)
+    // ==========================================
+    // Selalu diambil online (belum ada mode offline utk modul Halaqoh).
+    // Kartu hanya ditampilkan kalau guru yang login memang tercatat
+    // sebagai MUSRIF di blok 2 sheet KELAS&HALAQOH.
+    async function loadHalaqohSection() {
+      const section = document.getElementById('halaqohSection');
+      const listEl = document.getElementById('halaqohList');
+
+      let res;
+      try {
+        res = await apiCall('getHalaqohAssignments', { username: user.username });
+      } catch (e) {
+        res = { success: false };
+      }
+
+      if (!res.success || !res.assignments || !res.assignments.length) {
+        section.classList.remove('show');
+        return;
+      }
+
+      const LABEL_KEGIATAN = { TAHFIDZ: 'Tahfidz', TILAWAH: 'Tilawah' };
+
+      listEl.innerHTML = '';
+      res.assignments.forEach(a => {
+        const card = document.createElement('div');
+        card.className = 'halaqoh-card';
+        card.innerHTML = `
+          <div class="halaqoh-icon">📖</div>
+          <div style="flex:1;">
+            <div class="halaqoh-title">${a.halaqoh}</div>
+            <div class="halaqoh-subtitle">Nilai ${LABEL_KEGIATAN[a.kegiatan] || a.kegiatan}</div>
+          </div>
+          <div class="halaqoh-arrow">&rarr;</div>
+        `;
+        card.onclick = () => bukaHalaqoh(a.halaqoh, a.kegiatan);
+        listEl.appendChild(card);
+      });
+      section.classList.add('show');
+    }
+
+    function bukaHalaqoh(halaqoh, kegiatan) {
+      setCurrentHalaqoh(halaqoh, kegiatan);
+      window.location.href = kegiatan === 'TILAWAH' ? 'nilai-tilawah.html' : 'nilai-tahfidz.html';
     }
   </script>
 </body>
