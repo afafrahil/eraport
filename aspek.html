@@ -79,7 +79,10 @@
       margin: 0 auto;
     }
 
-    .empty-state {
+    .empty-state-block {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       text-align: center;
       padding: 24px 16px;
       color: var(--text-muted);
@@ -203,11 +206,14 @@
         </button>
       </div>
 
-      <div class="table-responsive">
+      <div class="table-responsive" id="tableWrapAspek">
         <table id="tableAspek">
           <thead id="theadAspek"></thead>
           <tbody id="tbodyAspek"></tbody>
         </table>
+      </div>
+      <div class="table-responsive empty-state-block" id="emptyStateAspek" style="display:none;">
+        Belum ada penilaian. Tekan "+ Tambah Penilaian" di bawah untuk mulai input nilai.
       </div>
       <div id="saveMsg" class="status-msg"></div>
     </div>
@@ -663,8 +669,25 @@
     function renderAspekTable() {
       const thead = document.getElementById('theadAspek');
       const tbody = document.getElementById('tbodyAspek');
+      const tableWrap = document.getElementById('tableWrapAspek');
+      const emptyState = document.getElementById('emptyStateAspek');
 
       const daftarKolom = aspekData.daftarKolom || [];
+
+      // Kasus data kosong: dirender sebagai blok teks polos (BUKAN tabel
+      // dengan sticky header/kolom) untuk menghindari bug rendering
+      // "position: sticky" di dalam container "overflow: auto" yang
+      // sering menyebabkan halaman tampil blank putih pada WebView
+      // Android versi lama / perangkat spek rendah.
+      if (daftarKolom.length === 0) {
+        tableWrap.style.display = 'none';
+        emptyState.style.display = 'flex';
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+        return;
+      }
+      tableWrap.style.display = '';
+      emptyState.style.display = 'none';
 
       let thHTML = `<tr><th class="sticky-col text-left">Nama Siswa</th>`;
       daftarKolom.forEach(kol => {
@@ -684,11 +707,6 @@
       thead.innerHTML = thHTML;
 
       tbody.innerHTML = '';
-
-      if (daftarKolom.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="1" class="empty-state">Belum ada penilaian. Tekan "+ Tambah Penilaian" di bawah untuk mulai input nilai.</td></tr>`;
-        return;
-      }
 
       aspekData.siswa.forEach(s => {
         const nMap = aspekData.nilai[s.nis] || {};
