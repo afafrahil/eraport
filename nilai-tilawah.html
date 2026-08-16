@@ -684,7 +684,7 @@
     // STATE
     // ==========================================
     let currentHalaqohInfo = null; // { halaqoh, kegiatan }
-    let daftarSiswa = [];          // dari getSiswaHalaqoh (selalu online)
+    let daftarSiswa = [];          // dari cache TinyDB (siswaHalaqohTag), diisi oleh sinkronData()
     let nilaiMap = {};             // NIS -> [ {waktu, jenisEvaluasi, mulai, selesai, predikat, status, catatan, username}, ... ] -- SUMBER: lokal (kStorage)
     let siswaAktifDetail = null;   // siswa yang sedang dibuka di modal Detail
     let entriAktifForm = null;     // entri yang sedang di-Tambah/Edit di modal Nilai
@@ -731,29 +731,31 @@
 
     // ==========================================
     // MUAT DATA
-    // - Daftar siswa: SELALU online (belum ada mode offline utk roster Halaqoh).
+    // - Daftar siswa: LOKAL (kStorage, siswaHalaqohTag) -- diisi oleh
+    //   sinkronData() ("Sinkron Data Guru" di dashboard), SAMA seperti
+    //   siswaTag(kelas) untuk kelas/mapel biasa. Tidak ada pemanggilan
+    //   online terpisah di sini.
     // - Histori nilai: LOKAL (kStorage) -- prinsip PRD "Data lokal menentukan
     //   apa yang ditampilkan". Jika belum pernah ada data lokal sama sekali
     //   (pertama kali dibuka), lakukan bootstrap sekali dari server.
     // ==========================================
     async function muatDataHalaqoh() {
-      showLoading(true, 'Memuat data siswa...');
+      showLoading(true, 'Memuat data siswa (offline)...');
 
-      const resSiswa = await apiCall('getSiswaHalaqoh', {
-        username: user.username,
-        halaqoh: currentHalaqohInfo.halaqoh
-      });
+      let siswa = null;
+      try {
+        siswa = await kStorage.getJSON(siswaHalaqohTag(currentHalaqohInfo.halaqoh), null);
+      } catch (e) { }
 
       showLoading(false);
 
-      if (!resSiswa.success) {
-        await showAlert(resSiswa.message || 'Gagal memuat data siswa.', 'Gagal');
-        document.getElementById('cardListSiswa').innerHTML =
-          `<div class="empty-state" style="color:var(--error);">${resSiswa.message || 'Gagal memuat data.'}</div>`;
+      if (!siswa) {
+        await showAlert('Data siswa Halaqoh belum tersinkron. Kembali ke Dashboard dan tekan "⟳ Sinkron Data Guru" terlebih dahulu.', 'Data Belum Tersinkron');
+        window.location.href = 'dashboard.html';
         return;
       }
 
-      daftarSiswa = resSiswa.siswa || [];
+      daftarSiswa = siswa;
 
       const tag = nilaiHalaqohTag(currentHalaqohInfo.halaqoh, KEGIATAN_HALAMAN);
       let lokal = null;

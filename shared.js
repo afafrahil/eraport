@@ -268,6 +268,16 @@ function nilaiHalaqohPendingDeleteTag(halaqoh, kegiatan) {
   return 'NILAI_HALAQOH_PENDING_DELETE_' + tagSafe(halaqoh) + '_' + tagSafe(kegiatan);
 }
 
+// Daftar penugasan Halaqoh (guru sebagai Musrif) & roster siswa per
+// kelompok Halaqoh -- disinkron & disimpan offline oleh sinkronData(),
+// SAMA seperti ASSIGNMENTS dan siswaTag(kelas) untuk kelas/mapel biasa.
+function halaqohAssignmentsTag() {
+  return 'HALAQOH_ASSIGNMENTS';
+}
+function siswaHalaqohTag(halaqoh) {
+  return 'SISWA_HALAQOH_' + tagSafe(halaqoh);
+}
+
 // ==========================================
 // TAG & STATE: WALI KELAS
 // ==========================================
@@ -491,6 +501,21 @@ async function sinkronData(silent = false) {
       kelasList: wk.kelasList
     });
 
+    // ==========================================
+    // HALAQOH (Musrif): daftar penugasan + roster siswa per kelompok --
+    // sudah ikut dikembalikan oleh SATU aksi getSyncData di atas (lihat
+    // getSyncData() di rekapDanSync.js), jadi di sini tinggal disimpan
+    // ke TinyDB. Tidak ada request API tambahan yang terpisah.
+    // ==========================================
+    const halaqohAssignments = res.halaqohAssignments || [];
+    await kStorage.setJSON(halaqohAssignmentsTag(), halaqohAssignments);
+
+    const namaHalaqohUnik = [...new Set(halaqohAssignments.map(a => a.halaqoh))];
+    const siswaByHalaqoh = res.siswaByHalaqoh || {};
+    for (const halaqoh of namaHalaqohUnik) {
+      await kStorage.setJSON(siswaHalaqohTag(halaqoh), siswaByHalaqoh[halaqoh] || []);
+    }
+
     await kStorage.setJSON('SYNC_META', {
       syncedAt: res.syncedAt,
       nama: res.nama,
@@ -503,7 +528,9 @@ async function sinkronData(silent = false) {
         res.assignments.length + ' kelas/mapel & data siswa tersimpan offline.' :
         'Tidak ada kelas/mapel yang diampu untuk periode ini.';
       const infoWali = wk.isWaliKelas ? '\nData wali kelas tersinkron.' : '';
-      await showAlert('Sinkron berhasil ✓\n' + bagianMapel + infoWali + (res.assignments.length ? '\nSekarang input nilai bisa dilakukan tanpa internet.' : ''), 'Sinkron Berhasil');
+      const infoHalaqoh = halaqohAssignments.length ?
+        '\nData Halaqoh (' + namaHalaqohUnik.length + ' kelompok) & siswanya tersimpan offline.' : '';
+      await showAlert('Sinkron berhasil ✓\n' + bagianMapel + infoWali + infoHalaqoh + (res.assignments.length ? '\nSekarang input nilai bisa dilakukan tanpa internet.' : ''), 'Sinkron Berhasil');
     }
   } catch (e) {
     if (!silent) await showAlert('Gagal sinkron: ' + e.message, 'Gagal');

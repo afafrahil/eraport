@@ -432,12 +432,13 @@
     }
 
     // Dipanggil dari tombol "⟳ Sinkron Data Guru" -- setelah sinkron
-    // (assignments + siswa + info wali kelas) selesai, render ulang
-    // kartu Wali Kelas supaya langsung mencerminkan hasil terbaru tanpa
-    // perlu reload halaman.
+    // (assignments + siswa + info wali kelas + data Halaqoh) selesai,
+    // render ulang kartu Wali Kelas & Halaqoh supaya langsung
+    // mencerminkan hasil terbaru tanpa perlu reload halaman.
     async function handleSinkronClick() {
       await sinkronData();
       loadWaliKelasSection();
+      loadHalaqohSection();
     }
 
     function bukaWaliKelas(kelas) {
@@ -448,21 +449,23 @@
     // ==========================================
     // HALAQOH (Musrif)
     // ==========================================
-    // Selalu diambil online (belum ada mode offline utk modul Halaqoh).
+    // Dibaca dari cache TinyDB (diisi oleh sinkronData() -- SATU aksi
+    // "Sinkron Data Guru" mengambil assignments mapel, data siswa, info
+    // wali kelas, DAN data Halaqoh sekaligus, lihat sinkronData() di
+    // shared.js). Halaman ini tidak melakukan pemanggilan online
+    // terpisah untuk data Halaqoh, sama seperti kartu kelas/mapel biasa.
     // Kartu hanya ditampilkan kalau guru yang login memang tercatat
     // sebagai MUSRIF di blok 2 sheet KELAS&HALAQOH.
     async function loadHalaqohSection() {
       const section = document.getElementById('halaqohSection');
       const listEl = document.getElementById('halaqohList');
 
-      let res;
+      let assignments = [];
       try {
-        res = await apiCall('getHalaqohAssignments', { username: user.username });
-      } catch (e) {
-        res = { success: false };
-      }
+        assignments = await kStorage.getJSON(halaqohAssignmentsTag(), []);
+      } catch (e) { }
 
-      if (!res.success || !res.assignments || !res.assignments.length) {
+      if (!assignments || !assignments.length) {
         section.classList.remove('show');
         return;
       }
@@ -470,7 +473,7 @@
       const LABEL_KEGIATAN = { TAHFIDZ: 'Tahfidz', TILAWAH: 'Tilawah' };
 
       listEl.innerHTML = '';
-      res.assignments.forEach(a => {
+      assignments.forEach(a => {
         const card = document.createElement('div');
         card.className = 'halaqoh-card';
         card.innerHTML = `
