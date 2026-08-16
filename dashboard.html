@@ -387,11 +387,12 @@
     // WALI KELAS
     // ==========================================
     // Menampilkan kartu "Wali Kelas" HANYA jika guru yang login tercatat
-    // sebagai wali kelas (sheet DATAKELAS). Datanya diambil dari cache
-    // TinyDB yang diisi oleh sinkronData() di shared.js -- SATU aksi
-    // "Sinkron Data Guru" mengambil assignments, data siswa, DAN info
-    // wali kelas sekaligus (lihat getSyncData di Code.gs). Halaman ini
-    // tidak melakukan pemanggilan online terpisah untuk info wali kelas.
+    // sebagai wali kelas (sheet KELAS&HALAQOH blok 1, kolom WALI KELAS).
+    // Datanya diambil dari cache TinyDB yang diisi oleh sinkronData() di
+    // shared.js -- SATU aksi "Sinkron Data Guru" mengambil assignments,
+    // data siswa, DAN info wali kelas sekaligus (lihat getSyncData di
+    // Code.gs). Halaman ini tidak melakukan pemanggilan online terpisah
+    // untuk info wali kelas.
     async function loadWaliKelasSection() {
       let res = null;
       try {
