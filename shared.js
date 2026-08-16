@@ -254,6 +254,21 @@ function userSessionTag() {
 }
 
 // ==========================================
+// TAG: NILAI HALAQOH (Tahfidz/Tilawah) -- histori penilaian per
+// kelompok Halaqoh, disimpan lokal-dulu (lihat PRD Nilai Tahfidz &
+// Tilawah). Dipakai bersama oleh nilai-tahfidz.html & nilai-tilawah.html.
+// ==========================================
+function nilaiHalaqohTag(halaqoh, kegiatan) {
+  return 'NILAI_HALAQOH_' + tagSafe(halaqoh) + '_' + tagSafe(kegiatan);
+}
+function nilaiHalaqohSyncMetaTag(halaqoh, kegiatan) {
+  return 'NILAI_HALAQOH_SYNC_META_' + tagSafe(halaqoh) + '_' + tagSafe(kegiatan);
+}
+function nilaiHalaqohPendingDeleteTag(halaqoh, kegiatan) {
+  return 'NILAI_HALAQOH_PENDING_DELETE_' + tagSafe(halaqoh) + '_' + tagSafe(kegiatan);
+}
+
+// ==========================================
 // TAG & STATE: WALI KELAS
 // ==========================================
 function waliKelasInfoTag() {
